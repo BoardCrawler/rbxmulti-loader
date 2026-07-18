@@ -19,7 +19,7 @@ No executable required — PowerShell only.
 **One-liner** (clone + install):
 
 ```powershell
-git clone https://github.com/BoardCrawler/rbxmulti-loader.git "$env:LOCALAPPDATA\rbxmulti-src"; & "$env:LOCALAPPDATA\rbxmulti-src\scripts\install.ps1"
+Set-ExecutionPolicy Bypass -Scope Process -Force; $zip="$env:TEMP\rbxmulti.zip"; $dst="$env:LOCALAPPDATA\rbxmulti-src"; Invoke-WebRequest "https://github.com/BoardCrawler/rbxmulti-loader/archive/refs/heads/main.zip" -OutFile $zip; Remove-Item $dst -Recurse -Force -ErrorAction SilentlyContinue; Expand-Archive $zip -DestinationPath "$env:LOCALAPPDATA" -Force; Rename-Item "$env:LOCALAPPDATA\rbxmulti-loader-main" "rbxmulti-src"; & "$dst\scripts\install.ps1"
 ```
 
 If you already have the repo:
