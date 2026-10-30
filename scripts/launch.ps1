@@ -1,6 +1,6 @@
 param(
-    [Parameter(Mandatory = $true, Position = 0)]
-    [string]$Uri
+    [Parameter(Mandatory = $false, Position = 0)]
+    [string]$Uri = $env:RBXMULTI_LAUNCH_URI
 )
 
 $ErrorActionPreference = 'Stop'

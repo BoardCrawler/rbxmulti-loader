@@ -49,11 +49,55 @@ try {
         $response = $context.Response
 
         $response.Headers.Add('Access-Control-Allow-Origin', '*')
-        $response.Headers.Add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        $response.Headers.Add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         $response.Headers.Add('Access-Control-Allow-Headers', 'Content-Type')
 
         if ($request.HttpMethod -eq 'OPTIONS') {
             $response.StatusCode = 204
+            $response.Close()
+            continue
+        }
+
+        $path = $request.Url.AbsolutePath.TrimEnd('/')
+        if ($request.HttpMethod -eq 'POST' -and ($path -eq '/launch' -or $path -eq '')) {
+            $reader = New-Object System.IO.StreamReader($request.InputStream, [System.Text.Encoding]::UTF8)
+            $rawBody = $reader.ReadToEnd()
+            $reader.Close()
+            $uri = $rawBody.Trim().Trim('"')
+            if ($uri.StartsWith('{')) {
+                try { $uri = [string](ConvertFrom-Json $uri).uri } catch { $uri = '' }
+            }
+            $allowed = $uri -match '^(rbxmulti|roblox-player|roblox-client|roblox)(:\/\/|:)'
+            if (-not $allowed) {
+                $denied = '{"ok":false}'
+                $deniedBytes = [System.Text.Encoding]::UTF8.GetBytes($denied)
+                $response.StatusCode = 400
+                $response.ContentType = 'application/json; charset=utf-8'
+                $response.ContentLength64 = $deniedBytes.Length
+                $response.OutputStream.Write($deniedBytes, 0, $deniedBytes.Length)
+                $response.Close()
+                continue
+            }
+            if ($uri -notmatch '^rbxmulti') {
+                $payload = [regex]::Replace($uri, '^(roblox-player|roblox-client|roblox)(:\/\/|:)', '')
+                $uri = "rbxmulti:$payload"
+            }
+            $env:RBXMULTI_LAUNCH_URI = $uri
+            $launch = Join-Path $installDir 'launch.ps1'
+            Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+                '-NoProfile',
+                '-ExecutionPolicy', 'Bypass',
+                '-WindowStyle', 'Hidden',
+                '-File', $launch
+            ) -WindowStyle Hidden
+            Remove-Item Env:RBXMULTI_LAUNCH_URI -ErrorAction SilentlyContinue
+            Write-Log "Queued launch (length=$($uri.Length))"
+            $okBody = '{"ok":true}'
+            $okBytes = [System.Text.Encoding]::UTF8.GetBytes($okBody)
+            $response.StatusCode = 200
+            $response.ContentType = 'application/json; charset=utf-8'
+            $response.ContentLength64 = $okBytes.Length
+            $response.OutputStream.Write($okBytes, 0, $okBytes.Length)
             $response.Close()
             continue
         }

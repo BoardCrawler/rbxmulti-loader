@@ -42,6 +42,22 @@ const data = await res.json();
 
 The server responds with CORS headers (`Access-Control-Allow-Origin: *`) and runs in the background after install, including after reboot (via `HKCU\...\Run`).
 
+## Launch from an extension
+
+Browsers block `rbxmulti:` unless it is opened in the same turn as a click. POST the original launch URI instead. The server accepts `rbxmulti:`, `roblox-player:`, and `roblox-client:`, rewrites the Roblox schemes to `rbxmulti:`, and starts `launch.ps1`.
+
+```javascript
+const res = await fetch('http://127.0.0.1:17391/launch', {
+  method: 'POST',
+  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+  body: 'roblox-player:1+launchmode:play+gameinfo:TOKEN+launchtime:1234567890+placelauncherurl:...'
+});
+const data = await res.json();
+// { ok: true }
+```
+
+A body that is not a launch URI returns `400` and `{ "ok": false }`. JSON `{ "uri": "..." }` is also accepted.
+
 Quick test in PowerShell:
 
 ```powershell
@@ -91,6 +107,9 @@ Extension
   → GET http://localhost:17391/
   → server.ps1 (background, autostart on login)
        └── { "installed": true, ... }
+
+  → POST http://127.0.0.1:17391/launch
+       └── launch.ps1 (rbxmulti: or roblox-player: URI)
 ```
 
 ## Files
